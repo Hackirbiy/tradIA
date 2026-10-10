@@ -1,0 +1,2 @@
+# tradIA
+IA´s Trading
