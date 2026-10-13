@@ -43,7 +43,7 @@ export const roles = [
       "Weigh social sentiment, uncertainty, and both sides. Identify what would change the conclusion.",
   },
 ];
-async function completion(instruction, input, schema, name) {
+export async function completion(instruction, input, schema, name) {
   const response = await fetch(
     `${process.env.OPENAI_BASE_URL || "https://api.openai.com/v1"}/responses`,
     {

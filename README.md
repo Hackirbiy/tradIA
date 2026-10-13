@@ -124,3 +124,28 @@ npm run build
 ```
 
 Tests cover allocation/risk budgets, binary contract loss exposure, cutoff and confidence gates, stop gaps, profit exits, persistence, and API order integrity. Demo prices are static by design, so simulated P&L remains flat until a test/live quote changes. Demo output is an explorable scenario, not a backtest or performance claim.
+
+## Aurum — poste XAUUSD (nouvelle interface)
+
+L’entrée `/` ouvre désormais un dashboard XAUUSD en français. L’ancien desk et ses API restent dans le dépôt. Démarrage inchangé : `npm run dev`, port 3000.
+
+- Six spécialistes D1, H1, M15, M5, M1 et corrélations DXY/taux US. Sans clé OpenAI, les votes et les explications sont un scénario fixe explicitement étiqueté. Avec une clé, six appels séparés analysent des chandeliers **synthétiques** ; les agents doivent signaler les données manquantes, notamment le calendrier et les corrélations.
+- Juge déterministe à poids égaux : nombre de votes du côté majoritaire / 6. Égalité, seuil non atteint ou arrêt manuel = HOLD. La conviction des modèles ne pondère pas les votes et n’est pas une probabilité de réussite.
+- Graphiques de démonstration M1/M5/M15/H1/D1, EMA 9/21 calculées pour l’affichage. Zones SMC et ATR M5 sont illustratifs, pas des indicateurs calculés à partir d’un flux broker.
+- À la fin de chaque analyse, le juge exécute automatiquement un ordre virtuel BUY/SELL si la confluence atteint **75 % minimum (inclus)**, soit 5 votes sur 6 à poids égaux. Aucun clic de confirmation ; le seuil peut être renforcé mais pas abaissé sous 75 %. Les configurations précédentes sont relevées à 75 %. Il n’y a pas encore de boucle d’analyse continue : chaque cycle est lancé avec le bouton d’analyse. Les blocages sont enregistrés avec leur motif, sans exécution différée après reprise ou clôture.
+- Ordres virtuels BUY/SELL : analyse de moins de 5 minutes, un seul ordre par analyse, une position à la fois, risque réglable de 0,1 à 2 %. Hypothèse de simulation : 100 onces par lot, pas de frais. Lots arrondis vers le bas au pas de 0,01. SL fixe illustratif de 4,80 USD (1,5 × ATR 3,20), objectif selon le R:R réglé. Le serveur recalcule et valide le plan.
+- Journal et paramètres stockés séparément dans `DATA_DIR/xau.json`. Les cours restent fixes : clôtures manuelles à P&L nul, pas de déclenchement automatique SL/TP ni de surveillance du drawdown. Le coupe-circuit **manuel** bloque les nouvelles entrées sans fermer les positions existantes.
+- **Pont MT4 disponible à installer** : la page MetaTrader 4 associe numéro de compte et serveur par une clé de transport. Le nouveau EA AurumBridge exporte les bougies et exécute les plans du juge, automatiquement à partir de 75 %. L’ancien AI Agent v12.8 doit être remplacé sur le graphique. Voir [le guide complet](mt4/README.md). La compilation et l’exécution broker restent à valider dans MT4 ; aucun terminal Windows n’est accessible depuis le sandbox. Le mot de passe broker reste dans MT4.
+
+### Telegram privé
+
+Configurer dans `.env` côté serveur (jamais dans le navigateur) :
+
+```dotenv
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+```
+
+Créer un bot avec BotFather, renseigner son token et votre identifiant de chat **privé**, redémarrer le serveur et envoyer `/start`, `/statut` ou `/juge`. Le bot n’accepte que ce chat et cet utilisateur et ignore les groupes. Il consulte le compte MT4 associé, ou la simulation si aucun compte n’est associé. `/stop` bloque les nouvelles entrées MT4 ; aucune commande d’ouverture ou d’armement n’est exposée. Poll toutes les 5 secondes ; les messages de plus de 60 secondes sont ignorés pour éviter la répétition au redémarrage. Un seul processus doit interroger le bot. Le serveur doit rester actif. Ne pas configurer de webhook sur ce même bot.
+
+L’application reste locale et mono-utilisateur, sans authentification web. Les routes `/api/mt4` requièrent la clé du pont et le relais distant exige HTTPS. Les anciennes API de simulation restent sans authentification : ajouter un contrôle d’accès avant exposition publique de l’application entière.

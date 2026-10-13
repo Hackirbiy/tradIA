@@ -6,10 +6,23 @@ import { assets, marketContext, predictionMarkets } from "./data.js";
 import { analyze, demoAnalysis } from "./agents.js";
 import { createStore } from "./store.js";
 import { riskPlan, equity, applyMarks, closePosition, LIMITS } from "./risk.js";
+import { createMt4 } from "./mt4.js";
+import { xauRouter } from "./xau.js";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const store = createStore(process.env.DATA_DIR || path.join(root, ".data"));
 const app = express();
 app.disable("x-powered-by");
+const mt4 = createMt4(process.env.DATA_DIR || path.join(root, ".data"));
+app.use("/api/mt4", mt4.router);
+app.get("/bridge-files/AurumBridge.mq4", (_, res) =>
+  res.download(path.join(root, "mt4/AurumBridge.mq4")),
+);
+app.get("/bridge-files/mt4-relay.mjs", (_, res) =>
+  res.download(path.join(root, "scripts/mt4-relay.mjs")),
+);
+app.get("/bridge-files/README.md", (_, res) =>
+  res.download(path.join(root, "mt4/README.md")),
+);
 app.use(express.json({ limit: "16kb" }));
 app.use("/api", (req, res, next) => {
   if (
@@ -23,6 +36,13 @@ app.use("/api", (req, res, next) => {
   res.set("Cache-Control", "no-store");
   next();
 });
+app.use(
+  "/api/xau",
+  xauRouter(process.env.DATA_DIR || path.join(root, ".data"), {
+    mt4Snapshot: mt4.snapshot,
+    mt4Halt: mt4.halt,
+  }),
+);
 const account = () => ({
   ...store.get(),
   analyses: undefined,
